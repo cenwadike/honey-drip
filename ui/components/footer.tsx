@@ -1,19 +1,24 @@
+"use client"
+
 import Link from "next/link"
 import { Github, Twitter } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t py-6 md:py-0">
-      <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
-        <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
+    // The footer now has a dark background and a defined top border to match the header.
+    <footer className="w-full bg-gray-950 border-t border-gray-800 py-12">
+      <div className="container flex flex-col items-center justify-between gap-8 md:flex-row">
+        {/* The copyright text is styled for better visibility on the dark background. */}
+        <p className="text-center text-sm leading-loose text-gray-400 md:text-left">
           © 2025 Honey Drip. All rights reserved.
         </p>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
+          {/* Navigation links with hover effects that match the header. */}
           <nav className="flex gap-4 sm:gap-6">
             <Link
               href="#"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-amber-500"
             >
               About
             </Link>
@@ -21,41 +26,42 @@ export default function Footer() {
               href="https://github.com/cenwadike/honey-drip"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-amber-500"
             >
               Docs
             </Link>
             <Link
               href="#"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-amber-500"
             >
               Audit
             </Link>
             <Link
               href="#"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-medium text-gray-400 transition-colors duration-200 hover:text-amber-500"
             >
               Terms
             </Link>
           </nav>
 
-          <div className="flex items-center gap-2">
+          {/* Social icons are larger and have the same hover effect. */}
+          <div className="flex items-center gap-4">
             <Link
               href="#"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-gray-400 transition-colors duration-200 hover:text-amber-500"
             >
-              <Twitter className="h-4 w-4" />
+              <Twitter className="h-5 w-5" />
               <span className="sr-only">Twitter</span>
             </Link>
             <Link
               href="#"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-gray-400 transition-colors duration-200 hover:text-amber-500"
             >
-              <Github className="h-4 w-4" />
+              <Github className="h-5 w-5" />
               <span className="sr-only">GitHub</span>
             </Link>
           </div>

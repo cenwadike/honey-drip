@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useWallet } from "@/components/wallet-provider"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, AlertCircle } from "lucide-react"
 
 interface Transaction {
   hash: string
@@ -21,7 +21,7 @@ export default function TransactionHistory() {
   const { address } = useWallet()
   const [transactions, setTransactions] = useState<Transaction[]>([])
 
-  // Mock transaction data
+  // Mock transaction data to simulate a live wallet.
   useEffect(() => {
     if (address) {
       // In a real implementation, this would fetch from a backend or blockchain
@@ -64,49 +64,68 @@ export default function TransactionHistory() {
   }
 
   if (!address) {
-    return null
+    return (
+      // Display a friendly message if the wallet is not connected.
+      <Card className="bg-gray-900 border-gray-800 text-gray-200 rounded-3xl shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-10 w-10 text-gray-600 mb-4" />
+            <p className="text-gray-500">
+              Connect your wallet to view your transaction history.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Transaction History</CardTitle>
-        <CardDescription>Your recent transactions with Honey Drip</CardDescription>
+    // The main card is styled to match the dark theme.
+    <Card className="bg-gray-900 border-gray-800 text-gray-200 rounded-3xl shadow-lg">
+      <CardHeader className="border-b border-gray-800 p-6">
+        <CardTitle className="text-2xl font-bold text-white">Transaction History</CardTitle>
+        <CardDescription className="text-gray-400">Your recent transactions with Honey Drip.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Transaction</TableHead>
+            <TableRow className="border-gray-800">
+              <TableHead className="text-gray-400">Type</TableHead>
+              <TableHead className="text-gray-400">Date</TableHead>
+              <TableHead className="text-gray-400">Value</TableHead>
+              <TableHead className="text-gray-400">Status</TableHead>
+              <TableHead className="text-gray-400">Transaction</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {transactions.map((tx, i) => (
-              <TableRow key={i}>
-                <TableCell>
+              // Table rows have a hover effect for better user experience.
+              <TableRow key={i} className="border-gray-800 hover:bg-gray-800 transition-colors duration-200">
+                <TableCell className="text-gray-300">
                   <Badge
-                    variant="outline"
+                    // Badges are styled with new background and text colors to fit the dark theme.
                     className={
                       tx.type === "stake"
-                        ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
                         : tx.type === "vip"
-                          ? "bg-purple-500/10 text-purple-500 border-purple-500/20"
-                          : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
                     }
                   >
                     {tx.type === "stake" ? "Stake" : tx.type === "vip" ? "VIP Stake" : "Harvest"}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatDate(tx.timestamp)}</TableCell>
-                <TableCell>{tx.value}</TableCell>
+                <TableCell className="text-gray-300">{formatDate(tx.timestamp)}</TableCell>
+                <TableCell className="text-gray-300">{tx.value}</TableCell>
                 <TableCell>
                   <Badge
-                    variant={
-                      tx.status === "success" ? "outline" : tx.status === "pending" ? "secondary" : "destructive"
+                    // Status badges are also updated to be visually distinct and match the theme.
+                    className={
+                      tx.status === "success" 
+                        ? "bg-green-500/10 text-green-400 border-green-500/20" 
+                        : tx.status === "pending" 
+                          ? "bg-amber-500/10 text-amber-400 border-amber-500/20" 
+                          : "bg-red-500/10 text-red-400 border-red-500/20"
                     }
                   >
                     {tx.status}
@@ -117,7 +136,7 @@ export default function TransactionHistory() {
                     href={`https://etherscan.io/tx/${tx.hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+                    className="flex items-center text-sm text-gray-500 transition-colors duration-200 hover:text-amber-500"
                   >
                     {truncateHash(tx.hash)}
                     <ExternalLink className="ml-1 h-3 w-3" />

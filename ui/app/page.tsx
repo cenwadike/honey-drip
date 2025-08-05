@@ -1,6 +1,8 @@
+"use client"
+
+import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import StakingForm from "@/components/staking-form"
 import VipStakingForm from "@/components/vip-staking-form"
 import RewardsSection from "@/components/rewards-section"
@@ -13,76 +15,74 @@ import StatsBar from "@/components/stats-bar"
 import TransactionHistory from "@/components/transaction-history"
 
 export default function Home() {
+  const [selectedPool, setSelectedPool] = React.useState("Stablecoin Pool");
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="honey-drip-theme">
       <WalletProvider>
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-gray-950 text-gray-200 flex flex-col">
           <Header />
           <main className="flex-1">
-            <HeroSection />
+            <HeroSection selectedPool={selectedPool} setSelectedPool={setSelectedPool} />
             <StatsBar />
 
             <section className="container py-12">
-              {/* Anchor points for navigation */}
               <span id="stake-section" className="block h-0 -mt-16 pt-16 invisible"></span>
 
               <Tabs defaultValue="stake" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-8">
-                  <TabsTrigger value="stake">Stake</TabsTrigger>
-                  <TabsTrigger value="vip">VIP Program</TabsTrigger>
-                  <TabsTrigger value="rewards">Rewards</TabsTrigger>
-                  <TabsTrigger value="history">History</TabsTrigger>
+                {/*
+                  - The `TabsList` padding (`p-2`) has been removed to allow the triggers to fill the container.
+                  - A new `px-2` and `py-1` padding has been added to the `TabsTrigger` elements themselves for proper spacing.
+                  - The `data-[state=active]` styles have been kept to maintain the active color scheme.
+                */}
+                <TabsList className="grid w-full grid-cols-4 border border-white/10 bg-white/5 backdrop-blur-xl rounded-2xl mb-8">
+                  <TabsTrigger 
+                    value="stake" 
+                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                  >
+                    Stake
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="vip"
+                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                  >
+                    VIP Program
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="rewards"
+                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                  >
+                    Rewards
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="history"
+                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                  >
+                    History
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="stake" className="space-y-4">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
+                  <div className="grid gap-6 md:grid-cols-1">
+                    <Card className="bg-gray-900 border-gray-800 text-gray-200">
                       <CardHeader>
-                        <CardTitle>Stake with Batch Permits</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-gray-100">Stake with Batch Permits</CardTitle>
+                        <CardDescription className="text-gray-400">
                           Deposit tokens and ETH with EIP-2612 permits for gas-efficient staking
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <StakingForm />
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Staking Pools</CardTitle>
-                        <CardDescription>Choose a pool to maximize your yield</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {[
-                          { name: "Stablecoin Pool", apy: "50%", tvl: "$2.5M" },
-                          { name: "ETH Pool", apy: "80%", tvl: "$4.2M" },
-                          { name: "Honey Pool", apy: "95%", tvl: "$1.8M" },
-                        ].map((pool, i) => (
-                          <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div>
-                              <h3 className="font-medium">{pool.name}</h3>
-                              <p className="text-sm text-muted-foreground">TVL: {pool.tvl}</p>
-                            </div>
-                            <div className="text-right">
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
-                                {pool.apy} APY
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
+                        <StakingForm selectedPool={selectedPool} onPoolChange={setSelectedPool} />
                       </CardContent>
                     </Card>
                   </div>
                 </TabsContent>
 
-                {/* VIP Program Section */}
                 <span id="vip-section" className="block h-0 -mt-16 pt-16 invisible"></span>
                 <TabsContent value="vip" className="space-y-4">
                   <VipStakingForm />
                 </TabsContent>
 
-                {/* Rewards Section */}
                 <span id="rewards-section" className="block h-0 -mt-16 pt-16 invisible"></span>
                 <TabsContent value="rewards" className="space-y-4">
                   <RewardsSection />
