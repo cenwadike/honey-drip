@@ -20,7 +20,13 @@ export default function Home() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="honey-drip-theme">
       <WalletProvider>
-        <div className="min-h-screen bg-gray-950 text-gray-200 flex flex-col">
+        {/*
+          - Replaced hardcoded `bg-gray-950` with `bg-background`.
+          - Replaced hardcoded `text-gray-200` with `text-foreground`.
+          - The `bg-background` and `text-foreground` classes are defined in your `globals.css` file
+            and will automatically switch between light and dark themes.
+        */}
+        <div className="min-h-screen bg-background text-foreground flex flex-col">
           <Header />
           <main className="flex-1">
             <HeroSection selectedPool={selectedPool} setSelectedPool={setSelectedPool} />
@@ -30,33 +36,29 @@ export default function Home() {
               <span id="stake-section" className="block h-0 -mt-16 pt-16 invisible"></span>
 
               <Tabs defaultValue="stake" className="w-full">
-                {/*
-                  - The `TabsList` padding (`p-2`) has been removed to allow the triggers to fill the container.
-                  - A new `px-2` and `py-1` padding has been added to the `TabsTrigger` elements themselves for proper spacing.
-                  - The `data-[state=active]` styles have been kept to maintain the active color scheme.
-                */}
-                <TabsList className="grid w-full grid-cols-4 border border-white/10 bg-white/5 backdrop-blur-xl rounded-2xl mb-8">
+                <TabsList className="grid w-full grid-cols-4 border border-border bg-muted/50 backdrop-blur-xl rounded-2xl mb-8">
                   <TabsTrigger 
                     value="stake" 
-                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                    // Using `data-[state=active]:bg-primary` for the active state
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-2xl text-base font-semibold hover:bg-muted transition-colors duration-200 py-2 px-2"
                   >
                     Stake
                   </TabsTrigger>
                   <TabsTrigger 
                     value="vip"
-                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-2xl text-base font-semibold hover:bg-muted transition-colors duration-200 py-2 px-2"
                   >
                     VIP Program
                   </TabsTrigger>
                   <TabsTrigger 
                     value="rewards"
-                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-2xl text-base font-semibold hover:bg-muted transition-colors duration-200 py-2 px-2"
                   >
                     Rewards
                   </TabsTrigger>
                   <TabsTrigger 
                     value="history"
-                    className="data-[state=active]:bg-amber-500 data-[state=active]:text-white rounded-2xl text-base font-semibold hover:bg-white/10 transition-colors duration-200 py-2 px-2"
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-2xl text-base font-semibold hover:bg-muted transition-colors duration-200 py-2 px-2"
                   >
                     History
                   </TabsTrigger>
@@ -64,10 +66,17 @@ export default function Home() {
 
                 <TabsContent value="stake" className="space-y-4">
                   <div className="grid gap-6 md:grid-cols-1">
-                    <Card className="bg-gray-900 border-gray-800 text-gray-200">
+                    {/*
+                      - Replaced hardcoded `bg-gray-900`, `border-gray-800`, and `text-gray-200` with
+                      - `bg-card`, `border-border`, and `text-card-foreground`.
+                    */}
+                    <Card className="bg-card border-border text-card-foreground">
                       <CardHeader>
-                        <CardTitle className="text-gray-100">Stake with Batch Permits</CardTitle>
-                        <CardDescription className="text-gray-400">
+                        {/* - Replaced hardcoded `text-gray-100` with `text-card-foreground`.
+                          - Replaced hardcoded `text-gray-400` with `text-muted-foreground`.
+                        */}
+                        <CardTitle className="text-card-foreground">Stake with Batch Permits</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                           Deposit tokens and ETH with EIP-2612 permits for gas-efficient staking
                         </CardDescription>
                       </CardHeader>

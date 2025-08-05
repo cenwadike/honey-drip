@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, memo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,305 +9,338 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useWallet } from "@/components/wallet-provider"
 import { AlertCircle, CheckCircle2, Loader2, Info } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ethers } from "ethers"
-import {
-  PERMIT_PROCESSING_FEE,
-  generatePermitSignature,
-  createBatchPermitData,
-  mockTokens,
-  mockPools,
-} from "@/lib/contract"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { mockTokens, mockPools } from "@/lib/contract"
+
+// === Utility ===
+const truncateAddress = (address: string) =>
+  `${address.slice(0, 6)}...${address.slice(-4)}`
+
+// === Components ===
+const WalletAlert = memo(() => (
+  <Alert className="text-center bg-accent/20 backdrop-blur-xl border border-accent text-accent-foreground rounded-xl">
+    <AlertCircle className="h-5 w-5 mx-auto mb-2" />
+    <AlertDescription>Please connect your wallet to get started.</AlertDescription>
+  </Alert>
+))
+WalletAlert.displayName = "WalletAlert"
+
+const PoolSelector = memo(({ poolId, setPoolId, onPoolChange }: any) => (
+  <div className="space-y-2">
+    <Label htmlFor="pool" className="text-sm text-muted-foreground font-medium">Select Pool</Label>
+    <Select value={poolId} onValueChange={onPoolChange}>
+      <SelectTrigger id="pool" className="rounded-xl bg-input border-border text-foreground hover:bg-muted transition-colors">
+        <SelectValue placeholder="Select a pool" />
+      </SelectTrigger>
+      <SelectContent className="bg-popover border-border text-popover-foreground rounded-xl">
+        {mockPools.map((pool) => (
+          <SelectItem key={pool.id} value={pool.id.toString()} className="hover:bg-accent hover:text-accent-foreground">
+            {pool.name} ({pool.apy} APY)
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+))
+PoolSelector.displayName = "PoolSelector"
+
+const TokenSelector = memo(({ selectedTokens, toggleToken }: any) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    {mockTokens.map((token) => (
+      <div
+        key={token.address}
+        className={`relative flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all duration-200
+          ${selectedTokens.includes(token.address)
+            ? "border-primary bg-primary/10 shadow-md"
+            : "border-border bg-card/5 hover:border-accent hover:bg-accent/10"
+          }`}
+        onClick={() => toggleToken(token.address)}
+      >
+        <div className="flex-grow">
+          <span className="font-semibold text-foreground">{token.symbol}</span>
+          <p className="text-xs text-muted-foreground">{token.balance}</p>
+        </div>
+        {selectedTokens.includes(token.address) && (
+          <CheckCircle2 className="h-5 w-5 text-primary absolute top-2 right-2" />
+        )}
+      </div>
+    ))}
+  </div>
+))
+TokenSelector.displayName = "TokenSelector"
+
+const StakingSummary = memo(({ selectedPool, stakeAmount, selectedTokens, ethAmount }: any) => (
+  <section className="space-y-4">
+    <h3 className="text-lg sm:text-xl font-semibold text-foreground">4. Staking Summary</h3>
+    <div className="bg-muted/5 backdrop-blur-xl border border-border rounded-xl p-4 space-y-4 text-muted-foreground">
+      {/* Pool */}
+      <div>
+        <h4 className="font-semibold text-foreground">Selected Pool</h4>
+        <p className="text-lg">
+          {selectedPool ? (
+            <>
+              {selectedPool.name}{" "}
+              <span className="text-sm text-muted-foreground">
+                ({selectedPool.apy} APY)
+              </span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">No pool selected</span>
+          )}
+        </p>
+      </div>
+      <div className="border-t border-border" />
+
+      {/* Stake Amount */}
+      <div>
+        <h4 className="font-semibold text-foreground">Stake Amount</h4>
+        <p className="text-lg">{stakeAmount || "0"} MTK</p>
+      </div>
+      <div className="border-t border-border" />
+
+      {/* Tokens for Permits */}
+      <div>
+        <h4 className="font-semibold text-foreground">
+          Tokens for Permits ({selectedTokens.length})
+        </h4>
+        <div className="flex flex-wrap gap-2">
+          {selectedTokens.length > 0 ? (
+            selectedTokens.map((tokenAddress) => {
+              const token = mockTokens.find((t) => t.address === tokenAddress)
+              return (
+                <span
+                  key={tokenAddress}
+                  className="text-sm bg-accent text-accent-foreground rounded-full px-3 py-1"
+                >
+                  {token?.symbol}
+                </span>
+              )
+            })
+          ) : (
+            <span className="text-muted-foreground">None selected</span>
+          )}
+        </div>
+      </div>
+      <div className="border-t border-border" />
+
+      {/* Estimated Cost */}
+      <div>
+        <h4 className="font-semibold text-foreground">Estimated Transaction Cost</h4>
+        <div className="flex flex-wrap items-center gap-2 text-lg">
+          <span>{Number(ethAmount).toFixed(4)} ETH</span>
+          <span className="text-sm text-muted-foreground">+ Gas</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="bg-popover text-popover-foreground border-border">
+                <p>
+                  This includes the processing fee and an estimate for network gas fees.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+    </div>
+  </section>
+))
+StakingSummary.displayName = "StakingSummary"
 
 export default function StakingForm() {
-  const { address, signer, optimizerContract, getTokenContract } = useWallet()
+  const { address } = useWallet()
   const [poolId, setPoolId] = useState("0")
   const [stakeAmount, setStakeAmount] = useState("")
   const [ethAmount, setEthAmount] = useState("0.001")
-  const [isVipBatch, setIsVipBatch] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
   const [selectedTokens, setSelectedTokens] = useState<string[]>([])
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [txStatus, setTxStatus] = useState<null | "pending" | "success" | "error">(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // New state to disable the button after a successful transaction
+  const [stakeConfirmed, setStakeConfirmed] = useState(false);
 
-  // Function to handle the staking logic, which is now a mock for UI purposes.
-  // In a live application, this would interact with the blockchain.
+  const selectedPool = useMemo(
+    () => mockPools.find(pool => pool.id.toString() === poolId),
+    [poolId]
+  )
+
+  const toggleToken = (token: string) => {
+    // Reset confirmation states when a token is added/removed
+    setStakeConfirmed(false);
+    setTxStatus(null);
+    setTxHash(null);
+    setErrorMessage(null);
+
+    setSelectedTokens(prev =>
+      prev.includes(token) ? prev.filter(t => t !== token) : [...prev, token]
+    )
+  }
+  
+  // New handler to clear states when pool or amount changes
+  const handleStakingDetailChange = (value: string) => {
+    // Reset all confirmation states
+    setStakeConfirmed(false);
+    setTxStatus(null);
+    setTxHash(null);
+    setErrorMessage(null);
+    setPoolId(value);
+  }
+
+  const setMaxStakeAmount = () => {
+    // Reset confirmation states
+    setStakeConfirmed(false);
+    setTxStatus(null);
+    setTxHash(null);
+    setErrorMessage(null);
+    setStakeAmount("1000");
+  }
+
+  // === Simulated Blockchain Call (Optimistic UI) ===
   const handleStake = async () => {
-    if (!address || !signer || !optimizerContract) {
+    if (!address) {
       setErrorMessage("Wallet not connected properly")
       return
     }
-
     if (!stakeAmount || selectedTokens.length === 0) {
       setErrorMessage("Please enter an amount and select at least one token.")
-      return;
+      return
     }
 
-    setIsSubmitting(true)
-    setTxStatus("pending")
-    setErrorMessage(null)
-
     try {
-      // Simulating a successful transaction for the UI
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setTxStatus("success");
-      setTxHash("0x123def..."); // Mock transaction hash
+      setIsSubmitting(true)
+      setTxStatus("pending")
+      setErrorMessage(null)
 
-    } catch (error) {
-      console.error("Error staking:", error)
+      // Simulate a 1-second delay before showing the pending state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Show tx hash immediately (mocked)
+      const fakeHash = "0x" + Math.floor(Math.random() * 1e16).toString(16).padEnd(64, "0")
+      setTxHash(fakeHash)
+
+      // Simulate waiting for blockchain confirmation
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      setTxStatus("success")
+      setStakeConfirmed(true); // Set the new state to true after a successful transaction
+    } catch (err) {
       setTxStatus("error")
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error occurred")
+      setErrorMessage(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const toggleToken = (token: string) => {
-    if (selectedTokens.includes(token)) {
-      setSelectedTokens(selectedTokens.filter((t) => t !== token))
-    } else {
-      setSelectedTokens([...selectedTokens, token])
-    }
-  }
-
-  const setMaxStakeAmount = () => {
-    // This is a mock function, would be replaced with a real balance lookup
-    setStakeAmount("1000")
-  }
-
-  const selectedPool = useMemo(() => {
-    return mockPools.find(pool => pool.id.toString() === poolId);
-  }, [poolId]);
-
   return (
-    // Main container with dark background and spacious padding.
-    <div className="bg-gray-950 text-white min-h-screen p-6 md:p-12 flex justify-center items-start">
-      {/* Main Card with glass like styling */}
-      <Card className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl transition-all duration-300 hover:shadow-amber-500/20 p-6 space-y-8 max-w-xl w-full">
+    <div className="bg-background text-foreground min-h-screen p-4 sm:p-6 flex justify-center">
+      <Card className="relative bg-card/5 backdrop-blur-xl border border-border rounded-3xl shadow-2xl transition-all duration-300 hover:shadow-primary/20 p-4 sm:p-6 space-y-8 max-w-xl w-full">
         <CardHeader className="text-center p-0">
-          <CardTitle className="text-3xl font-bold text-white">Staking & Permits</CardTitle>
-          <CardDescription className="text-gray-400">
-            Manage your staking options and approve tokens.
-          </CardDescription>
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">Staking & Permits</CardTitle>
+          <CardDescription className="text-muted-foreground">Manage your staking options and approve tokens.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6 p-0">
           {!address ? (
-            // Custom alert for disconnected wallet, styled for the dark theme.
-            <Alert className="text-center bg-white/5 backdrop-blur-xl border border-white/20 text-amber-300 rounded-xl">
-              <AlertCircle className="h-5 w-5 mx-auto mb-2" />
-              <AlertDescription>
-                Please connect your wallet to get started.
-              </AlertDescription>
-            </Alert>
+            <WalletAlert />
           ) : (
             <>
-              {/* Section 1: Staking Details */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white">1. Staking Details</h3>
+              {/* Staking Details */}
+              <section className="space-y-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground">1. Staking Details</h3>
+                <PoolSelector poolId={poolId} setPoolId={setPoolId} onPoolChange={handleStakingDetailChange} />
+
                 <div className="space-y-2">
-                  <Label htmlFor="pool" className="text-sm text-gray-300 font-medium">Select Pool</Label>
-                  {/* Select component styled for the new theme */}
-                  <Select value={poolId} onValueChange={setPoolId}>
-                    <SelectTrigger id="pool" className="rounded-xl bg-white/5 border-white/20 text-gray-200 hover:bg-white/10 transition-colors">
-                      <SelectValue placeholder="Select a pool" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700 text-gray-200 rounded-xl">
-                      {mockPools.map((pool) => (
-                        <SelectItem key={pool.id} value={pool.id.toString()} className="hover:bg-gray-700">
-                          {pool.name} ({pool.apy} APY)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="amount" className="text-sm text-gray-300 font-medium">Stake Amount</Label>
-                  <div className="relative">
+                  <Label htmlFor="amount" className="text-sm text-muted-foreground font-medium">Stake Amount</Label>
+                  <div className="relative flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       id="amount"
                       type="number"
                       placeholder="0.0"
                       value={stakeAmount}
-                      onChange={(e) => setStakeAmount(e.target.value)}
-                      className="pr-12 rounded-xl bg-white/5 border-white/20 text-gray-200"
+                      onChange={(e) => {
+                        // Reset confirmation states when the amount changes
+                        setStakeConfirmed(false);
+                        setTxStatus(null);
+                        setTxHash(null);
+                        setErrorMessage(null);
+                        setStakeAmount(e.target.value);
+                      }}
+                      className="rounded-xl bg-input border-border text-foreground w-full"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 text-amber-500 hover:bg-amber-500/20"
+                      className="sm:w-auto w-full text-primary hover:bg-primary/20 hover:text-primary-foreground"
                       onClick={setMaxStakeAmount}
                     >
                       Max
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">Available: 1000 MTK</p>
+                  <p className="text-xs text-muted-foreground">Available: 1000 MTK</p>
                 </div>
-              </div>
+              </section>
 
-              <div className="my-6 border-b border-white/10" />
-
-              {/* Section 2: Permit Options */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white">2. Permit Options</h3>
-                <div className="space-y-2">
-                  <Label className="text-sm text-gray-300 font-medium">Select Tokens for Permits</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {mockTokens.map((token) => (
-                      <div
-                        key={token.address}
-                        className={`
-                          relative flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all duration-200
-                          ${selectedTokens.includes(token.address) 
-                            ? "border-amber-500 bg-amber-500/10 shadow-md" 
-                            : "border-white/20 bg-white/5 hover:border-amber-300 hover:bg-white/10"
-                          }
-                        `}
-                        onClick={() => toggleToken(token.address)}
-                      >
-                        <div className="flex-grow">
-                          <span className="font-semibold text-white">{token.symbol}</span>
-                          <p className="text-xs text-gray-500">{token.balance}</p>
-                        </div>
-                        {selectedTokens.includes(token.address) && (
-                          <CheckCircle2 className="h-5 w-5 text-amber-500 absolute top-2 right-2" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {/* Permit Options */}
+              <section className="space-y-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground">2. Permit Options</h3>
+                <TokenSelector selectedTokens={selectedTokens} toggleToken={toggleToken} />
 
                 <div className="space-y-2">
-                  <Label htmlFor="eth" className="text-sm text-gray-300 font-medium">ETH Deposit (for gas)</Label>
+                  <Label htmlFor="eth" className="text-sm text-muted-foreground font-medium">ETH Deposit (for gas)</Label>
                   <Input
                     id="eth"
                     type="number"
                     placeholder="0.001"
                     value={ethAmount}
                     onChange={(e) => setEthAmount(e.target.value)}
-                    className="rounded-xl bg-white/5 border-white/20 text-gray-200"
+                    className="rounded-xl bg-input border-border text-foreground"
                   />
-                  <p className="text-xs text-gray-500">Minimum: 0.001 ETH for processing fee</p>
+                  <p className="text-xs text-muted-foreground">Minimum: 0.001 ETH for processing fee</p>
                 </div>
-              </div>
+              </section>
 
-              <div className="my-6 border-b border-white/10" />
-              
-              {/* Section 3: Staking Summary */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white">3. Staking Summary</h3>
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 space-y-4 text-gray-300">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-white">Selected Pool</h4>
-                      <p className="text-lg">
-                        {selectedPool ? (
-                          <span>{selectedPool.name} <span className="text-sm text-gray-500">({selectedPool.apy} APY)</span></span>
-                        ) : (
-                          <span className="text-gray-500">No pool selected</span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="border-t border-white/10" />
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-white">Stake Amount</h4>
-                      <p className="text-lg">{stakeAmount || "0"} MTK</p>
-                    </div>
-                    <div className="border-t border-white/10" />
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-white">Tokens for Permits ({selectedTokens.length})</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedTokens.length > 0 ? (
-                          selectedTokens.map(tokenAddress => {
-                            const token = mockTokens.find(t => t.address === tokenAddress);
-                            return <span key={tokenAddress} className="text-sm bg-white/10 text-white rounded-full px-3 py-1">{token?.symbol}</span>
-                          })
-                        ) : (
-                          <span className="text-gray-500">None selected</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="border-t border-white/10" />
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-white">Estimated Transaction Cost</h4>
-                      <div className="flex items-center text-lg">
-                        <span className="mr-2">{Number(ethAmount).toFixed(4)} ETH</span>
-                        <span className="text-sm text-gray-500">+ Gas</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 ml-2 text-gray-500 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-gray-800 text-gray-200 border-gray-700">
-                              <p>This includes the processing fee and an estimate for network gas fees.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-                  </div>
-              </div>
+              {/* Summary */}
+              <StakingSummary
+                selectedPool={selectedPool}
+                stakeAmount={stakeAmount}
+                selectedTokens={selectedTokens}
+                ethAmount={ethAmount}
+              />
 
-              <div className="my-6 border-b border-white/10" />
-
-              {/* Section 4: Confirmation */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white">4. Confirmation</h3>
-                
-                <TooltipProvider>
-                  <Tooltip>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="vip" 
-                        checked={isVipBatch} 
-                        onCheckedChange={(checked) => setIsVipBatch(checked as boolean)} 
-                        className="border-gray-500 data-[state=checked]:bg-amber-500 data-[state=checked]:text-white"
-                      />
-                      <Label htmlFor="vip" className="text-sm text-gray-300 flex items-center gap-1">
-                        VIP Batch (requires VIP status)
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-gray-500 cursor-help" />
-                        </TooltipTrigger>
-                      </Label>
-                    </div>
-                    <TooltipContent className="bg-gray-800 text-gray-200 border-gray-700">
-                      <p>Enables a priority batch for faster transaction processing.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
+              {/* Confirmation */}
+              <section className="space-y-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-foreground">5. Confirmation</h3>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="terms"
                     checked={acceptTerms}
-                    onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
-                    className="border-gray-500 data-[state=checked]:bg-amber-500 data-[state=checked]:text-white"
+                    onCheckedChange={(checked) => setAcceptTerms(!!checked)}
+                    className="border-border data-[state=checked]:bg-primary"
                   />
-                  <Label htmlFor="terms" className="text-sm text-gray-300">
-                    I accept the{" "}
-                    <a href="#" className="text-amber-500 hover:underline font-medium">
-                      Terms of Service
-                    </a>
+                  <Label htmlFor="terms" className="text-sm text-muted-foreground">
+                    I accept the <a href="#" className="text-primary hover:underline font-medium">Terms of Service</a>
                   </Label>
                 </div>
-              </div>
+              </section>
 
+              {/* Transaction Feedback */}
               {txStatus === "success" && (
-                <Alert className="bg-white/5 backdrop-blur-xl text-green-400 border-green-500/20 rounded-xl">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <AlertDescription className="flex flex-col">
-                    <span className="font-medium">Transaction successful!</span>
-                    Your stake has been processed.
+                <Alert className="bg-secondary text-success border-success/20 rounded-xl">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <AlertDescription>
+                    <span className="font-medium">Transaction successful!</span><br />
+                    You are now staking {stakeAmount} MTK in the {selectedPool?.name} pool.
                     {txHash && (
                       <a
                         href={`https://etherscan.io/tx/${txHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 text-sm text-amber-400 hover:underline font-medium"
+                        className="block mt-2 text-sm text-primary hover:underline font-medium"
                       >
                         View on Etherscan
                       </a>
@@ -315,32 +348,53 @@ export default function StakingForm() {
                   </AlertDescription>
                 </Alert>
               )}
-
               {txStatus === "error" && (
-                <Alert className="bg-white/5 backdrop-blur-xl text-red-400 border-red-500/20 rounded-xl">
-                  <AlertCircle className="h-5 w-5" />
+                <Alert className="bg-secondary text-destructive border-destructive/20 rounded-xl">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
                   <AlertDescription>
-                    <span className="font-medium">Transaction failed.</span>
-                    <br/>
+                    <span className="font-medium">Transaction failed.</span><br />
                     {errorMessage || "Please try again."}
                   </AlertDescription>
                 </Alert>
               )}
 
-              <Button
-                onClick={handleStake}
-                disabled={!stakeAmount || !acceptTerms || isSubmitting || selectedTokens.length === 0}
-                className="w-full bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 rounded-full py-6 text-lg font-bold shadow-xl transition-all duration-300 transform hover:scale-105"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    <span className="font-semibold">Processing...</span>
-                  </>
-                ) : (
-                  "Stake Now"
-                )}
-              </Button>
+              {stakeConfirmed ? (
+                // This message is shown after a successful transaction
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    To stake again, please update your staking details above.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setStakeConfirmed(false);
+                      setTxStatus(null);
+                      setTxHash(null);
+                      setStakeAmount("");
+                      setSelectedTokens([]);
+                      setAcceptTerms(false);
+                    }}
+                    variant="outline"
+                    className="w-full rounded-full py-5 text-lg font-bold"
+                  >
+                    Start Fresh
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleStake}
+                  disabled={!stakeAmount || !acceptTerms || isSubmitting || selectedTokens.length === 0}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full py-5 text-lg font-bold shadow-xl transition-all duration-300 hover:scale-105"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Stake Now"
+                  )}
+                </Button>
+              )}
             </>
           )}
         </CardContent>
