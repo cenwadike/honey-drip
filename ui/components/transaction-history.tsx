@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useWallet } from "@/components/wallet-provider"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, AlertCircle } from "lucide-react"
 
 interface Transaction {
   hash: string
@@ -21,15 +21,13 @@ export default function TransactionHistory() {
   const { address } = useWallet()
   const [transactions, setTransactions] = useState<Transaction[]>([])
 
-  // Mock transaction data
   useEffect(() => {
     if (address) {
-      // In a real implementation, this would fetch from a backend or blockchain
       setTransactions([
         {
           hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
           type: "stake",
-          timestamp: Date.now() - 3600000, // 1 hour ago
+          timestamp: Date.now() - 3600000,
           status: "success",
           value: "50 MTK",
           poolId: 0,
@@ -38,7 +36,7 @@ export default function TransactionHistory() {
         {
           hash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
           type: "vip",
-          timestamp: Date.now() - 86400000, // 1 day ago
+          timestamp: Date.now() - 86400000,
           status: "success",
           value: "50 MTK",
           permitCount: 5,
@@ -46,7 +44,7 @@ export default function TransactionHistory() {
         {
           hash: "0x7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456",
           type: "harvest",
-          timestamp: Date.now() - 172800000, // 2 days ago
+          timestamp: Date.now() - 172800000,
           status: "success",
           value: "0.003 ETH",
           poolId: 1,
@@ -64,49 +62,69 @@ export default function TransactionHistory() {
   }
 
   if (!address) {
-    return null
+    return (
+      // Replaced hardcoded dark theme colors with theme-aware ones.
+      <Card className="bg-card border-border text-foreground rounded-3xl shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              Connect your wallet to view your transaction history.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Transaction History</CardTitle>
-        <CardDescription>Your recent transactions with Honey Drip</CardDescription>
+    // The main card is now styled with theme-aware variables.
+    <Card className="bg-card border-border text-foreground rounded-3xl shadow-lg">
+      <CardHeader className="border-b border-border p-6">
+        <CardTitle className="text-2xl font-bold text-foreground">Transaction History</CardTitle>
+        <CardDescription className="text-muted-foreground">Your recent transactions with Honey Drip.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Transaction</TableHead>
+            <TableRow className="border-border">
+              {/* Table headers now use muted-foreground for consistency. */}
+              <TableHead className="text-muted-foreground">Type</TableHead>
+              <TableHead className="text-muted-foreground">Date</TableHead>
+              <TableHead className="text-muted-foreground">Value</TableHead>
+              <TableHead className="text-muted-foreground">Status</TableHead>
+              <TableHead className="text-muted-foreground">Transaction</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {transactions.map((tx, i) => (
-              <TableRow key={i}>
-                <TableCell>
+              // Table rows use border-border and a hover effect with background from muted/10.
+              <TableRow key={i} className="border-border hover:bg-muted/10 transition-colors duration-200">
+                <TableCell className="text-foreground">
                   <Badge
-                    variant="outline"
+                    // Badge colors are replaced with theme-aware versions.
                     className={
                       tx.type === "stake"
-                        ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
                         : tx.type === "vip"
-                          ? "bg-purple-500/10 text-purple-500 border-purple-500/20"
-                          : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
                     }
                   >
                     {tx.type === "stake" ? "Stake" : tx.type === "vip" ? "VIP Stake" : "Harvest"}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatDate(tx.timestamp)}</TableCell>
-                <TableCell>{tx.value}</TableCell>
+                <TableCell className="text-foreground">{formatDate(tx.timestamp)}</TableCell>
+                <TableCell className="text-foreground">{tx.value}</TableCell>
                 <TableCell>
                   <Badge
-                    variant={
-                      tx.status === "success" ? "outline" : tx.status === "pending" ? "secondary" : "destructive"
+                    // Status badges also use theme-aware colors.
+                    className={
+                      tx.status === "success" 
+                        ? "bg-green-500/10 text-green-400 border-green-500/20" 
+                        : tx.status === "pending" 
+                          ? "bg-amber-500/10 text-amber-400 border-amber-500/20" 
+                          : "bg-red-500/10 text-red-400 border-red-500/20"
                     }
                   >
                     {tx.status}
@@ -117,7 +135,8 @@ export default function TransactionHistory() {
                     href={`https://etherscan.io/tx/${tx.hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+                    // Link color is now dynamic and uses the primary theme color on hover.
+                    className="flex items-center text-sm text-muted-foreground transition-colors duration-200 hover:text-primary"
                   >
                     {truncateHash(tx.hash)}
                     <ExternalLink className="ml-1 h-3 w-3" />

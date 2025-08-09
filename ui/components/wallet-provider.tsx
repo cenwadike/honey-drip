@@ -4,6 +4,9 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { ethers } from "ethers"
 import { getOptimizerContract, getTokenContract, CONTRACT_ADDRESS, TOKEN_ADDRESS } from "@/lib/contract"
 
+// ✅ Added constant so it's defined everywhere you need it
+const MOCK_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
 interface WalletContextType {
   address: string | null
   connect: () => Promise<void>
@@ -15,6 +18,7 @@ interface WalletContextType {
   optimizerContract: ethers.Contract | null
   tokenContract: ethers.Contract | null
   getTokenContract: (tokenAddress: string) => ethers.Contract | null
+  setMockAddress: (mockAddr: string) => void
 }
 
 const WalletContext = createContext<WalletContextType>({
@@ -28,6 +32,7 @@ const WalletContext = createContext<WalletContextType>({
   optimizerContract: null,
   tokenContract: null,
   getTokenContract: () => null,
+  setMockAddress: () => {},
 })
 
 export const useWallet = () => useContext(WalletContext)
@@ -41,100 +46,76 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [optimizerContract, setOptimizerContract] = useState<ethers.Contract | null>(null)
   const [tokenContract, setTokenContract] = useState<ethers.Contract | null>(null)
 
-  // Connect to wallet
+  const setMockAddress = (mockAddr: string) => {
+    setAddress(mockAddr)
+    setChainId(1)
+
+    const mockProvider = new ethers.JsonRpcProvider("http://localhost:8545")
+    setProvider(mockProvider)
+
+    const mockSigner = new ethers.Wallet(
+      "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      mockProvider
+    )
+    setSigner(mockSigner)
+
+    const mockOptimizer = new ethers.Contract(CONTRACT_ADDRESS, [], mockSigner)
+    const mockToken = new ethers.Contract(TOKEN_ADDRESS, [], mockSigner)
+    setOptimizerContract(mockOptimizer)
+    setTokenContract(mockToken)
+
+    sessionStorage.setItem("mockConnected", "true") 
+  }
+
   const connect = async () => {
     setIsConnecting(true)
 
     try {
-      // Check if window.ethereum is available
       if (typeof window !== "undefined" && window.ethereum) {
-        // Request account access
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
-        const userAddress = accounts[0]
-
-        // Create provider and signer
         const ethersProvider = new ethers.BrowserProvider(window.ethereum)
+        const accounts = await ethersProvider.send("eth_requestAccounts", [])
+        const userAddress = accounts[0]
         const ethersSigner = await ethersProvider.getSigner()
-
-        // Get network information
         const network = await ethersProvider.getNetwork()
 
-        // Set state
         setAddress(userAddress)
         setChainId(Number(network.chainId))
         setProvider(ethersProvider)
         setSigner(ethersSigner)
 
-        // Initialize contracts
         const optimizer = getOptimizerContract(ethersSigner)
         const token = getTokenContract(TOKEN_ADDRESS, ethersSigner)
-
         setOptimizerContract(optimizer)
         setTokenContract(token)
 
-        // Store connection in localStorage
-        localStorage.setItem("walletConnected", "true")
+        sessionStorage.setItem("walletConnected", "true")
+        sessionStorage.removeItem("mockConnected") 
 
-        // Setup event listeners
         window.ethereum.on("accountsChanged", handleAccountsChanged)
         window.ethereum.on("chainChanged", handleChainChanged)
       } else {
-        // Fallback to mock connection for demo purposes
-        mockConnection()
+        console.error("No Ethereum provider found. Please install a wallet like MetaMask.")
       }
     } catch (error) {
       console.error("Error connecting wallet:", error)
-      // Fallback to mock connection for demo purposes
-      mockConnection()
+      disconnect()
     } finally {
       setIsConnecting(false)
     }
   }
 
-  // Mock connection for demo purposes
-  const mockConnection = () => {
-    setAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-    setChainId(1) // Ethereum Mainnet
-
-    // Create a mock provider and signer
-    const mockProvider = new ethers.JsonRpcProvider("http://localhost:8545")
-    setProvider(mockProvider)
-
-    // Create a mock signer with the address
-    const mockSigner = new ethers.Wallet(
-      "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-      mockProvider,
-    )
-    setSigner(mockSigner)
-
-    // Create mock contracts
-    const mockOptimizer = new ethers.Contract(CONTRACT_ADDRESS, [], mockSigner)
-    const mockToken = new ethers.Contract(TOKEN_ADDRESS, [], mockSigner)
-
-    setOptimizerContract(mockOptimizer)
-    setTokenContract(mockToken)
-
-    localStorage.setItem("walletConnected", "true")
-  }
-
-  // Handle account change
   const handleAccountsChanged = (accounts: string[]) => {
     if (accounts.length === 0) {
-      // User disconnected their wallet
       disconnect()
     } else {
-      // User switched accounts
       setAddress(accounts[0])
     }
   }
 
-  // Handle chain change
   const handleChainChanged = () => {
-    // Reload the page on chain change as recommended by MetaMask
     window.location.reload()
   }
 
-  // Disconnect wallet
   const disconnect = () => {
     setAddress(null)
     setChainId(null)
@@ -142,26 +123,28 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setProvider(null)
     setOptimizerContract(null)
     setTokenContract(null)
-    localStorage.removeItem("walletConnected")
-
-    // Remove event listeners
+    sessionStorage.removeItem("walletConnected")
+    sessionStorage.removeItem("mockConnected")
+    
     if (typeof window !== "undefined" && window.ethereum) {
       window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
       window.ethereum.removeListener("chainChanged", handleChainChanged)
     }
   }
 
-  // Get token contract instance
   const getTokenContractInstance = (tokenAddress: string) => {
     if (!signer) return null
     return getTokenContract(tokenAddress, signer)
   }
 
-  // Check for saved connection on mount
   useEffect(() => {
-    const isConnected = localStorage.getItem("walletConnected") === "true"
-    if (isConnected) {
+    const wasConnected = sessionStorage.getItem("walletConnected") === "true"
+    const wasMockConnected = sessionStorage.getItem("mockConnected") === "true"
+
+    if (wasConnected && typeof window !== "undefined" && window.ethereum?.selectedAddress) {
       connect()
+    } else if (wasMockConnected) {
+      setMockAddress(MOCK_ADDRESS)
     }
   }, [])
 
@@ -178,6 +161,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         optimizerContract,
         tokenContract,
         getTokenContract: getTokenContractInstance,
+        setMockAddress,
       }}
     >
       {children}
@@ -185,10 +169,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-// Add type definitions for window.ethereum
 declare global {
   interface Window {
     ethereum?: {
+      selectedAddress?: string
       request: (args: { method: string; params?: any[] }) => Promise<any>
       on: (event: string, listener: (...args: any[]) => void) => void
       removeListener: (event: string, listener: (...args: any[]) => void) => void
